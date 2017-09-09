@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 class TableWidget(QMainWindow):
-    h_header = ['股票代码','股票名称','买卖日期','买卖价格','盈亏率','买卖数量', '买卖金额','分红','分红税','佣金','印花税','盈利']
+    h_header = ['股票代码','股票名称','买卖日期','买卖价格','涨幅','买卖数量', '买卖金额','分红','分红税','佣金','印花税','盈利', '收益+盈亏率']
     filename = 'stock.txt'
     file = 'abc.txt'
     COLS = 40
@@ -28,6 +28,7 @@ class TableWidget(QMainWindow):
         #self.table.setSelectionBehavior(QTableWidget.SelectRows)
         #self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
+        #self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
         self._list = []
 
@@ -37,13 +38,16 @@ class TableWidget(QMainWindow):
         self.i_num = TableWidget.h_header.index('买卖数量')
         self.i_price = TableWidget.h_header.index('买卖价格')
 
-        self.i_gain_rate = TableWidget.h_header.index('盈亏率')
+        self.i_increase = TableWidget.h_header.index('涨幅')
         self.i_commission = TableWidget.h_header.index('佣金')
         self.i_tax = TableWidget.h_header.index('印花税')
         self.i_dividends = TableWidget.h_header.index('分红')
         self.i_dividends_tax = TableWidget.h_header.index('分红税')
 
         self.i_gain = TableWidget.h_header.index('盈利')
+        self.i_gain_rate = TableWidget.h_header.index('收益+盈亏率')
+
+        self.table.horizontalHeader().resizeSection(self.i_gain_rate, 120)
 
         newItem = QTableWidgetItem('0')
         self.table.setItem(TableWidget.COLS-1, self.i_gain, newItem)
@@ -51,7 +55,7 @@ class TableWidget(QMainWindow):
     def clear_data(self, _item):
         
         self.table.item(_item.row(), self.i_total).setData(0, '---')
-        self.table.item(_item.row(), self.i_gain_rate).setData(0, '---')
+        self.table.item(_item.row(), self.i_increase).setData(0, '---')
         self.table.item(_item.row(), self.i_commission).setData(0, '---')
         self.table.item(_item.row(), self.i_tax).setData(0, '---')
         if self.table.item(_item.row(), self.i_dividends).data(0) != '---' and self.table.item(_item.row(), self.i_dividends).data(0)!= '':
@@ -64,6 +68,7 @@ class TableWidget(QMainWindow):
         else:
             self.table.item(_item.row(), self.i_dividends_tax).setData(0, '---')
         self.table.item(_item.row(), self.i_gain).setData(0, '---')
+        self.table.item(_item.row(), self.i_gain_rate).setData(0, '---')
 
     def compute_data(self, _item):
 
@@ -129,8 +134,59 @@ class TableWidget(QMainWindow):
 
             
             # Profit and loss rate
+            '''
             if num == 0:
-                i_gain_rate = 0
+                i_increase = 0
+            '''
+        # compute gain_rate
+        
+        stock_list = []
+        stock_gain = 0
+        stock_cost = 0
+        stock_num = 0
+        rate = 0
+        for i in range(TableWidget.COLS-1):
+            if self.table.item(i, self.i_gain).data(0) != '---' and self.table.item(i, self.i_gain).data(0) != '':
+                #each_gain = float('%.2f' %float(self.table.item(i, self.i_gain).data(0)))
+                if self.table.item(i, 0).data(0) != '' and self.table.item(i, 0).data(0) == self.table.item(i+1, 0).data(0):
+                    stock_list.append(i)
+                else:
+                    stock_list.append(i)
+                    for j in stock_list:
+                        each_gain = float('%.2f' %float(self.table.item(j, self.i_gain).data(0)))
+                        #if each_gain < 0:
+                            #stock_num += float('%.2f' %float(self.table.item(j, self.i_num).data(0)))
+                            #stock_cost += abs(each_gain)
+                        
+                        stock_gain += each_gain
+                    
+                    stock_gain = float('%.2f' %stock_gain)
+                   
+                    rate = float('%.2f' %rate)
+                    if self.table.item(stock_list[-1], self.i_total).data(0) != '---':
+                        if float(self.table.item(stock_list[-1], self.i_total).data(0)) > 0:
+                            stock_cost = abs(stock_gain - each_gain)
+                            rate = stock_gain/stock_cost *100 
+                            rate = float('%.2f' %rate)
+                            self.table.item(stock_list[-1], self.i_gain_rate).setData(0, str(stock_gain) + '   /  ' + str(rate) + '%')
+                    else:
+                        if len(stock_list) > 1 and float(self.table.item(stock_list[-2], self.i_total).data(0)) > 0:
+                            stock_cost = abs(stock_gain - float(self.table.item(stock_list[-2], self.i_gain).data(0)))
+                            rate = stock_gain/stock_cost *100
+                            rate = float('%.2f' %rate)
+                            self.table.item(stock_list[-1], self.i_gain_rate).setData(0, str(stock_gain) + '   /  ' + str(rate) + '%')
+
+
+                    if stock_gain > 0:
+                        self.table.item(i, self.i_gain).setForeground(Qt.red)
+                    else:
+                        self.table.item(i, self.i_gain).setForeground(Qt.green)
+
+                    stock_list = []
+                    stock_gain = 0
+                    stock_cost = 0
+                    rate = 0
+
 
         # compute total in last line
         un_compute_gain = 0
